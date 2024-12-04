@@ -12,3 +12,5 @@ pre_traitement.py   5.5  (Pré-traitement des images)
 classification_pixel.py  5.6  
 classification_stand.py  5.7  
 my_function.py   5.3 + 5.4.1 + 5.4.2 + 5.4.3 + 5.5 + 5.6.3 + 5.7  
+
+## https://mlang.frama.io/cours-marc-lang/stable/sigmaM2_telea/sigmaM2_projet.html
