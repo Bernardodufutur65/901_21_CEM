@@ -1,13 +1,13 @@
 Projet télédec
 https://mlang.frama.io/cours-marc-lang/stable/sigmaM2_telea/sigmaM2_projet.html
 
-• Création du dépôt Git
+• Création du dépôt Git ✓
 
-• Télécharger les images
+• Télécharger les images ✓
 --> THEIA
 --> BDFORET
 
-• Upload les images sur Onyxia dans : mes fichiers --> diffusion --> images
+• Upload les images sur Onyxia dans : mes fichiers --> diffusion --> images ✓
 ⚠️ charger à l'aide d'un terminal les images à chaque nouvelle session avec le code : mc cp -r s3/mecva/diffusion/images /home/onyxia/work/data
 
 • Masque sur les rasters à partir de la BDFORET
@@ -36,7 +36,15 @@ Nommer le fichier Sample_BD_foret_T31TCJ.shp (si vous utilisez le format shapefi
 --> Si d'éventuelles fonctions créées pour structurer le code, les mettre dans "my_function.py"
 
 • Analyse des échantillons
+× Nombre d'échantillons
+--> Utiliser les bibliothèques matplotlib ou plotly
+--> Utiliser les classes de la colonne "classif pixel" de la figure 2
+--> produire un diagramme en bâton :
+    --> nombre de polygones par classe, nommez le diag_baton_nb_poly_by_class.png (ou .html le cas échant) et commentez brièvement les résultats obtenus
+    --> nombre de pixel par classe, nommez le diag_baton_nb_pix_by_class.png (ou .html le cas échant) et commentez brièvement les résultats obtenus
+--> Produire un "violin plot" de la distribution nombre de pixels par polygone, par classe, nommez le violin_plot_nb_pix_by_poly_by_class.png (ou .html le cas échant) et commentez brièvement les résultats obtenus
+==> Les figures sont à produire dans le dossier results/figure
+--> Instructions du masque à mettre dans "sample_analysis_nb_sample.py"
+--> Si d'éventuelles fonctions créées pour structurer le code, les mettre dans "my_function.py"
 
-
-
-
+× Phénologie des peuplements purs
