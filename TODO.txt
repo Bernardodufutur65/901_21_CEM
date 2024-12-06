@@ -1,0 +1,42 @@
+Projet télédec
+https://mlang.frama.io/cours-marc-lang/stable/sigmaM2_telea/sigmaM2_projet.html
+
+• Création du dépôt Git
+
+• Télécharger les images
+--> THEIA
+--> BDFORET
+
+• Upload les images sur Onyxia dans : mes fichiers --> diffusion --> images
+⚠️ charger à l'aide d'un terminal les images à chaque nouvelle session avec le code : mc cp -r s3/mecva/diffusion/images /home/onyxia/work/data
+
+• Masque sur les rasters à partir de la BDFORET
+--> exclure : lande, formation herbacée, forêts ouvertes et forêt fermée sans couvert arboré
+--> Format raster GeoTiff
+--> encodé en 8 bits
+--> même emprise spatiale et résolution spatiale que les images S2 utilisées (après découpe Cf section Pré-traitement des images);
+--> nom du fichier masque_foret.tif ;
+--> chemin du fichier results/data/img_pretraitees
+--> contient les valeurs suivantes :
+    --> Classe zone de forêt avec valeur de pixel 1
+    --> Classe zone hors forêt avec valeur de pixel 0
+--> Instructions du masque à mettre dans "build_mask.py"
+--> Si d'éventuelles fonctions créées pour structurer le code, les mettre dans "my_function.py"
+
+• Sélectionner les échantillons :
+--> bibliothèque geopandas pour sélection des classes et création attribut
+--> inclux dans l'emprise des images S2 utilisées
+--> utiliser uniquement les classes présentes dans la figure 2 de la page du Projet
+--> Certaines classes TFV pas à prendre en compte pour les deux classifs
+Résulat attendu est un fichier vecteur qui contient les polygones sélectionnés de la BD Forêt avec les attributs suivants
+    - nom
+    - code
+Nommer le fichier Sample_BD_foret_T31TCJ.shp (si vous utilisez le format shapefile) et mettez le dans le dossier results/data/sample
+--> Instructions du masque à mettre dans "sample_curation.py"
+--> Si d'éventuelles fonctions créées pour structurer le code, les mettre dans "my_function.py"
+
+• Analyse des échantillons
+
+
+
+
