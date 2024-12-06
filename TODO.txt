@@ -1,6 +1,7 @@
 Projet télédec
 https://mlang.frama.io/cours-marc-lang/stable/sigmaM2_telea/sigmaM2_projet.html
 
+**DO** : 
 • Création du dépôt Git ✓
 
 • Télécharger les images ✓
@@ -10,6 +11,7 @@ https://mlang.frama.io/cours-marc-lang/stable/sigmaM2_telea/sigmaM2_projet.html
 • Upload les images sur Onyxia dans : mes fichiers --> diffusion --> images ✓
 ⚠️ charger à l'aide d'un terminal les images à chaque nouvelle session avec le code : mc cp -r s3/mecva/diffusion/images /home/onyxia/work/data
 
+**TODO** : 
 • Masque sur les rasters à partir de la BDFORET
 --> exclure : lande, formation herbacée, forêts ouvertes et forêt fermée sans couvert arboré
 --> Format raster GeoTiff
