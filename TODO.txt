@@ -12,6 +12,7 @@ https://mlang.frama.io/cours-marc-lang/stable/sigmaM2_telea/sigmaM2_projet.html
 ⚠️ charger à l'aide d'un terminal les images à chaque nouvelle session avec le code : mc cp -r s3/mecva/diffusion/images /home/onyxia/work/data
 
 **TODO** : 
+• Faire un schéma des traitements (pour ne pas se perdre)
 • Masque sur les rasters à partir de la BDFORET
 --> exclure : lande, formation herbacée, forêts ouvertes et forêt fermée sans couvert arboré
 --> Format raster GeoTiff
