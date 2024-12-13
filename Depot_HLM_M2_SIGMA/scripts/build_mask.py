@@ -1,35 +1,7 @@
-import sys
-sys.path.append('/libsigma')
-
 import os
 import geopandas as gpd
 
-
-from osgeo import gdal
-import numpy as np
-import subprocess
-
-
-
-def rasterization(in_vector, ref_image, out_image, field_name, dtype=None):
-    """
-    See otbcli_rasterisation for details on parameters
-    """
-    if dtype is not None :
-        field_name = field_name + ' ' + dtype
-    # define commande
-    cmd_pattern = (
-        "otbcli_Rasterization -in {in_vector} -im {ref_image} -out {out_image}"
-        " -mode attribute -mode.attribute.field {field_name}")
-    cmd = cmd_pattern.format(in_vector=in_vector, ref_image=ref_image,
-                             out_image=out_image, field_name=field_name)
-    print(cmd)
-
-    # pour python >= 3.7
-    result = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
-    print(result.decode())
-
-
+from osgeo import gdal, ogr
 
 
 # inputs
@@ -37,7 +9,7 @@ my_folder = '/home/onyxia/work/data/project/'
 sample_filename = os.path.join(my_folder, 'FORMATION_VEGETALE.shp')
 image_filename = ('/home/onyxia/work/data/images/SENTINEL2B_20220326-105856-076_L2A_T31TCJ_C_V3-0_FRE_B2.tif')
 output_filename = "/test.shp"
-output_raster_path = "/home/onyxia/work/data/project/test.tif"
+output_raster_path = "/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/img_pretraitees/masque_foret.tif"
 
 # Liste des éléments à exclure
 exclude_list = ["LA4", "LA6", "FO", "FF0"]
@@ -52,17 +24,51 @@ gdf = gpd.read_file(sample_filename)
 gdf_filtered = gdf[~gdf[field_to_filter].str.startswith(tuple(exclude_list), na=False)]
 
 # Ajouter un champ "forest_zone" avec une valeur de 1 pour tous les éléments filtrés
-gdf_filtered['forest_zone'] = 1
+gdf_filtered['forest_zon'] = 1
 
 # Sauvegarder le GeoDataFrame filtré dans un fichier GeoPackage
 gdf_filtered.to_file(my_folder + output_filename, layer='filtered_data', driver='ESRI Shapefile')
 
+# Charger l'image de référence pour récupérer la résolution et l'emprise
+reference_ds = gdal.Open(image_filename)
+geotransform = reference_ds.GetGeoTransform()
+projection = reference_ds.GetProjection()
+x_res = reference_ds.RasterXSize
+y_res = reference_ds.RasterYSize
+extent = [
+    geotransform[0],
+    geotransform[3] + y_res * geotransform[5],
+    geotransform[0] + x_res * geotransform[1],
+    geotransform[3],
+]
 
-
-rasterization(
-    in_vector="/home/onyxia/work/data/project/test.shp",
-    ref_image="/home/onyxia/work/data/images/SENTINEL2B_20220326-105856-076_L2A_T31TCJ_C_V3-0_FRE_B2.tif",
-    out_image="901_21_CEM/Depot_HLM_M2_SIGMA/results/data/img_pretraitees/masque_foret.tif",
-    field_name="forest_zone",
-    dtype="uint8"  # Assure l'encodage en 8 bits
+# Créer un raster vide avec les mêmes dimensions et emprise que l'image de référence
+driver = gdal.GetDriverByName('GTiff')
+output_raster = driver.Create(
+    output_raster_path, x_res, y_res, 1, gdal.GDT_Byte
 )
+output_raster.SetGeoTransform(geotransform)
+output_raster.SetProjection(projection)
+
+# Charger le fichier shapefile en tant que source de données OGR
+shapefile_ds = ogr.Open(my_folder + output_filename)
+layer = shapefile_ds.GetLayer()
+
+# Rasteriser la couche
+gdal.RasterizeLayer(
+    output_raster, [1], layer,
+    options=["ATTRIBUTE=forest_zon"]
+)
+
+# Assigner une valeur de nodata pour les pixels non couverts
+band = output_raster.GetRasterBand(1)
+band.SetNoDataValue(0)
+
+# Nettoyer les objets
+band.FlushCache()
+output_raster.FlushCache()
+output_raster = None
+shapefile_ds = None
+reference_ds = None
+
+print(f"Raster généré avec succès : {output_raster_path}")
