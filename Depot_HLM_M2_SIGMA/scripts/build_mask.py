@@ -9,10 +9,10 @@ from osgeo import gdal, ogr
 my_folder = '/home/onyxia/work/data/project/'
 sample_filename = os.path.join(my_folder, 'FORMATION_VEGETALE.shp')
 image_filename = ('/home/onyxia/work/data/images/SENTINEL2B_20220326-105856-076_L2A_T31TCJ_C_V3-0_FRE_B2.tif')
-output_filename = "/test.shp"
+output_filename = "/foret.shp"
 
 # Chemin du dossier à créer
-folder_path = '/home/onyxia/work/data/project/results/data/img_pretraitees'
+folder_path = '/home/onyxia/work/results/data/img_pretraitees'
 
 # Vérifier si le dossier existe, sinon le créer
 if not os.path.exists(folder_path):
@@ -22,7 +22,7 @@ else:
     print(f"Le dossier existe déjà : {folder_path}")
 
 
-output_raster_path = "/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/img_pretraitees/masque_foret.tif"
+output_raster_path = "/home/onyxia/work/results/data/img_pretraitees/masque_foret.tif"
 
 # Liste des éléments à exclure
 exclude_list = ["LA4", "LA6", "FO", "FF0"]
