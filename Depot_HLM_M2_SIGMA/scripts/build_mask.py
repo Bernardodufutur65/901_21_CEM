@@ -19,7 +19,7 @@ my_folder = '/home/onyxia/work/data/project/'
 sample_filename = os.path.join(my_folder, 'FORMATION_VEGETALE.shp')
 image_filename = ('/home/onyxia/work/data/images/SENTINEL2B_20220326-105856-076_L2A_T31TCJ_C_V3-0_FRE_B2.tif')
 # chemin de sortie du fichier shp foret dans /home/onyxia/work/data/project/results/data/foret.shp
-output_filename = "/results/data/foret.shp"
+output_filename = "/home/onyxia/work/results/data/foret.shp"
 
 # chemin de sortie du raster masque_foret
 output_raster_path = "/home/onyxia/work/results/data/img_pretraitees/masque_foret.tif"
@@ -40,7 +40,7 @@ gdf_filtered = gdf[~gdf[field_to_filter].str.startswith(tuple(exclude_list), na=
 gdf_filtered['forest_zon'] = 1
 
 # Sauvegarder le GeoDataFrame filtré dans un fichier GeoPackage
-gdf_filtered.to_file(my_folder + output_filename, layer='filtered_data', driver='ESRI Shapefile')
+gdf_filtered.to_file(output_filename, layer='filtered_data', driver='ESRI Shapefile')
 
 # Charger l'image de référence pour récupérer la résolution et l'emprise
 reference_ds = gdal.Open(image_filename)
@@ -64,7 +64,7 @@ output_raster.SetGeoTransform(geotransform)
 output_raster.SetProjection(projection)
 
 # Charger le fichier shapefile en tant que source de données OGR
-shapefile_ds = ogr.Open(my_folder + output_filename)
+shapefile_ds = ogr.Open(output_filename)
 layer = shapefile_ds.GetLayer()
 
 # Rasteriser la couche
