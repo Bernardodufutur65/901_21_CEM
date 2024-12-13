@@ -28,7 +28,7 @@ output_raster_path = "/home/onyxia/work/results/data/img_pretraitees/masque_fore
 exclude_list = ["LA4", "LA6", "FO", "FF0"]
 
 # Champ à filtrer sur le code_tfv
-field_to_filter = 'CODE_TFV'  
+field_to_filter = 'CODE_TFV'
 
 # Charger le shapefile
 gdf = gpd.read_file(sample_filename)
