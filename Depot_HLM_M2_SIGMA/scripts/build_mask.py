@@ -4,13 +4,6 @@ import geopandas as gpd
 from osgeo import gdal, ogr
 
 
-
-# inputs
-my_folder = '/home/onyxia/work/data/project/'
-sample_filename = os.path.join(my_folder, 'FORMATION_VEGETALE.shp')
-image_filename = ('/home/onyxia/work/data/images/SENTINEL2B_20220326-105856-076_L2A_T31TCJ_C_V3-0_FRE_B2.tif')
-output_filename = "/foret.shp"
-
 # Chemin du dossier à créer
 folder_path = '/home/onyxia/work/results/data/img_pretraitees'
 
@@ -21,14 +14,21 @@ if not os.path.exists(folder_path):
 else:
     print(f"Le dossier existe déjà : {folder_path}")
 
+# chemin de fichier
+my_folder = '/home/onyxia/work/data/project/'
+sample_filename = os.path.join(my_folder, 'FORMATION_VEGETALE.shp')
+image_filename = ('/home/onyxia/work/data/images/SENTINEL2B_20220326-105856-076_L2A_T31TCJ_C_V3-0_FRE_B2.tif')
+# chemin de sortie du fichier shp foret dans /home/onyxia/work/data/project/results/data/foret.shp
+output_filename = "/results/data/foret.shp"
 
+# chemin de sortie du raster masque_foret
 output_raster_path = "/home/onyxia/work/results/data/img_pretraitees/masque_foret.tif"
 
 # Liste des éléments à exclure
 exclude_list = ["LA4", "LA6", "FO", "FF0"]
 
-# Champ à filtrer (à ajuster selon le shapefile)
-field_to_filter = 'CODE_TFV'  # Remplace 'CODE' par le nom réel du champ
+# Champ à filtrer sur le code_tfv
+field_to_filter = 'CODE_TFV'  
 
 # Charger le shapefile
 gdf = gpd.read_file(sample_filename)
@@ -36,7 +36,7 @@ gdf = gpd.read_file(sample_filename)
 # Filtrer le GeoDataFrame en excluant les valeurs commençant par les préfixes de la liste
 gdf_filtered = gdf[~gdf[field_to_filter].str.startswith(tuple(exclude_list), na=False)]
 
-# Ajouter un champ "forest_zone" avec une valeur de 1 pour tous les éléments filtrés
+# Ajouter un champ "forest_zon" avec une valeur de 1 pour tous les éléments filtrés
 gdf_filtered['forest_zon'] = 1
 
 # Sauvegarder le GeoDataFrame filtré dans un fichier GeoPackage
