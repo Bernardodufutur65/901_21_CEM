@@ -1,133 +1,163 @@
 import os
 import geopandas as gpd
+import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+import rasterio
+import seaborn as sns
+
+from rasterio.mask import mask
+
+
+# chemin du dossier de sortie à créer
+folder_path = '/home/onyxia/work/results/figure'
+# Vérifier si le dossier existe, sinon le créer
+if not os.path.exists(folder_path):
+    os.makedirs(folder_path)
+    print(f"Dossier créé : {folder_path}")
+else:
+    print(f"Le dossier existe déjà : {folder_path}")
 
 # Chemin du fichier shapefile
-shapefile_path = "/home/onyxia/work/results/data/foret.shp"
+shapefile_path = "/home/onyxia/work/results/data/sample/Sample_BD_foret_T31TCJ.shp"
 
 # Charger le fichier shapefile
 gdf = gpd.read_file(shapefile_path)
 
 # Vérifier la colonne "classif pixel"
-if "CODE_TFV" not in gdf.columns:
-    raise ValueError("La colonne 'CODE_TFV' n'existe pas dans le fichier shapefile.")
+if "Code" not in gdf.columns:
+    raise ValueError("La colonne 'Code' n'existe pas dans le fichier shapefile.")
 
-# Diagramme 1 : Nombre de polygones par classe
-polygons_by_class = gdf["CODE_TFV"].value_counts()
+# Diagramme 1 : Codebre de polygones par classe
+polygons_by_class = gdf["Code"].value_counts()
 
 # Produire un diagramme en bâton
 plt.figure(figsize=(10, 6))
 polygons_by_class.plot(kind="bar", color="skyblue")
-plt.title("Nombre de polygones par classe")
+plt.title("Histogramme du nombre de polygones par classe ")
 plt.xlabel("Classe")
-plt.ylabel("Nombre de polygones")
+plt.ylabel("Nbs de polygones")
 plt.xticks(rotation=45)
-plt.tight_layout()
+plt.tight_layout(pad=2)
+plt.savefig("/home/onyxia/work/results/figure/diag_baton_nb_poly_by_class.png")
 plt.show()
-
-plt.savefig("diag_baton_nb_poly_by_class.png")
 plt.close()
 
-print("Diagramme du nombre de polygones par classe enregistré : diag_baton_nb_poly_by_class.png")
+
+print("Diagramme du Codebre de polygones par classe enregistré : diag_baton_nb_poly_by_class.png")
+
+
 
 # Diagramme 2 : Nombre de pixels par classe
-# Supposons que chaque polygone a un champ "pixel_count" indiquant son nombre de pixels
-if "pixel_count" not in gdf.columns:
-    raise ValueError("La colonne 'pixel_count' est nécessaire pour calculer le nombre de pixels par classe.")
-
-pixels_by_class = gdf.groupby("classif pixel")["pixel_count"].sum()
-
-# Produire un diagramme en bâton
-plt.figure(figsize=(10, 6))
-pixels_by_class.plot(kind="bar", color="lightcoral")
-plt.title("Nombre de pixels par classe")
-plt.xlabel("Classe")
-plt.ylabel("Nombre de pixels")
-plt.xticks(rotation=45)
-plt.tight_layout()
-plt.savefig("diag_baton_nb_pix_by_class.png")
-plt.close()
-
-print("Diagramme du nombre de pixels par classe enregistré : diag_baton_nb_pix_by_class.png")
-
-
-
-
-import os
-import geopandas as gpd
-from osgeo import gdal, ogr
-import numpy as np
-import matplotlib.pyplot as plt
-
 # Chemins des fichiers
-shapefile_path = "/home/onyxia/work/results/data/foret.shp"
 raster_path = "/home/onyxia/work/results/data/img_pretraitees/masque_foret.tif"
 output_raster_path = "/home/onyxia/work/results/data/nb_pixel.tif"  # Temporaire pour calculer les pixels
 
-# Charger le shapefile
+# Charger le shapefile avec Geopandas
 gdf = gpd.read_file(shapefile_path)
 
-# Vérifier la colonne "classif pixel"
-if "CODE_TFV" not in gdf.columns:
-    raise ValueError("La colonne 'CODE_TFV' n'existe pas dans le fichier shapefile.")
+# Vérifier le CRS du shapefile
+print("CRS du shapefile :", gdf.crs)
 
-# Charger le raster pour récupérer les métadonnées
-raster_ds = gdal.Open(raster_path)
-geo_transform = raster_ds.GetGeoTransform()
-projection = raster_ds.GetProjection()
-x_res = raster_ds.RasterXSize
-y_res = raster_ds.RasterYSize
+# Vérifier le CRS du raster
+with rasterio.open(raster_path) as src:
+    print("CRS du raster :", src.crs)
 
-# Créer un raster temporaire pour rasteriser les polygones
-driver = gdal.GetDriverByName("GTiff")
-rasterized_ds = driver.Create(output_raster_path, x_res, y_res, 1, gdal.GDT_UInt32)
-rasterized_ds.SetGeoTransform(geo_transform)
-rasterized_ds.SetProjection(projection)
+# Si les CRS sont différents, reprojetez le shapefile au CRS du raster
+if gdf.crs != src.crs:
+    gdf = gdf.to_crs(src.crs)
 
-# Charger le shapefile comme couche OGR
-shapefile_ds = ogr.Open(shapefile_path)
-layer = shapefile_ds.GetLayer()
+# Charger le raster avec Rasterio
+with rasterio.open(raster_path) as src:
+    raster_data = src.read(1)  # Lecture de la première bande
+    affine = src.transform
 
-# Ajouter un identifiant unique à chaque polygone
-for i, feature in enumerate(layer):
-    feature.SetField("id", i + 1)
-    layer.SetFeature(feature)
+    # Préparer une liste pour les résultats
+    results = []
 
-# Rasteriser la couche
-gdal.RasterizeLayer(
-    rasterized_ds, [1], layer, options=["ATTRIBUTE=id"]
-)
-rasterized_ds.FlushCache()
+    # Parcourir chaque polygone du shapefile
+    for _, row in gdf.iterrows():
+        # Extraire le polygone
+        geom = [row['geometry'].__geo_interface__]
+        code = row['Code']  # Remplacez 'CODE' par le champ correspondant dans votre shapefile
 
-# Lire le rasterisé comme un tableau numpy
-rasterized_band = rasterized_ds.GetRasterBand(1)
-rasterized_array = rasterized_band.ReadAsArray()
+        # Masquer le raster avec le polygone
+        out_image, out_transform = mask(src, geom, crop=True)
+        out_image = out_image[0]  # Extraire la première bande
 
-# Calculer le nombre de pixels pour chaque polygone
-pixel_counts = {}
-unique_ids = np.unique(rasterized_array)
-unique_ids = unique_ids[unique_ids > 0]  # Ignorer les pixels de fond (valeur 0)
+        # Trouver les pixels ayant la valeur 1
+        pixel_count = np.sum(out_image == 1)
 
-for poly_id in unique_ids:
-    pixel_counts[poly_id] = np.sum(rasterized_array == poly_id)
+        # Sauvegarder le résultat
+        results.append({"code": code, "pixel_count": pixel_count})
 
-# Ajouter les nombres de pixels au GeoDataFrame
-gdf["pixel_count"] = gdf.index.map(pixel_counts)
+# Afficher les résultats
+for result in results:
+    print(f"Code: {result['code']}, Pixels avec valeur 1: {result['pixel_count']}")
 
-# Supprimer le fichier raster temporaire
-rasterized_ds = None
-os.remove(output_raster_path)
 
-# Diagramme : Nombre de pixels par classe
-pixels_by_class = gdf.groupby("CODE_TFV")["pixel_count"].sum()
+# Créer un DataFrame à partir des résultats
+results_df = pd.DataFrame(results)
 
+# Grouper les pixels par classe (code) et calculer la somme des pixels
+pixels_by_class = results_df.groupby("code")["pixel_count"].sum()
+
+# Trier par ordre croissant du nombre de pixels
+pixels_by_class = pixels_by_class.sort_values(ascending=False)
+
+# Tracer un histogramme
 plt.figure(figsize=(10, 6))
 pixels_by_class.plot(kind="bar", color="lightcoral")
-plt.title("Nombre de pixels par classe")
+plt.title("Histogramme du nombre de pixels par classe")
 plt.xlabel("Classe")
-plt.ylabel("Nombre de pixels")
+plt.ylabel("Nombre de pixels x10^6")
 plt.xticks(rotation=45)
 plt.tight_layout()
+# Sauvegarder le graphique avant de fermer
+plt.savefig("/home/onyxia/work/results/figure/diag_baton_nb_pix_by_class.png")
 plt.show()
 
-print("Diagramme du nombre de pixels par classe affiché.")
+# Fermer la figure pour éviter des conflits
+plt.close()
+
+print("Diagramme du nombre de polygones par classe enregistré : diag_baton_nb_pix_by_class.png")
+
+
+
+# Créer un DataFrame à partir des résultats
+results_df = pd.DataFrame(results)
+
+# Grouper les pixels par classe pour avoir le total par classe
+class_totals = results_df.groupby("code")["pixel_count"].sum().reset_index()
+
+# Violin Plot basé sur les totaux par classe
+plt.figure(figsize=(12, 8))
+sns.violinplot(x="code", y="pixel_count", data=class_totals, scale="width", inner="quartile", palette="pastel")
+
+# Ajuster les titres et les étiquettes
+plt.title("Distribution des pixels totaux par classe", fontsize=14)
+plt.xlabel("Classe", fontsize=12)
+plt.ylabel("Nombre total de pixels", fontsize=12)
+plt.xticks(rotation=45)
+
+
+# Sauvegarder l'image
+plt.tight_layout()
+plt.savefig("/home/onyxia/work/results/figure/violin_plot_nb_pix_by_poly_by_class.png")
+plt.show()
+
+# logarithm
+results_df["log_pixel_count"] = np.log1p(results_df["pixel_count"])
+plt.figure(figsize=(12, 8))
+sns.violinplot(x="code", y="log_pixel_count", data=results_df, scale="width", inner="quartile", palette="pastel")
+
+plt.title("Distribution logarithmique du nombre de pixels par polygone et par classe", fontsize=14)
+plt.xlabel("Classe", fontsize=12)
+plt.ylabel("Log(Nombre de pixels)", fontsize=12)
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.savefig("/home/onyxia/work/results/figure/violin_plot_but_with_logarithm.png")
+plt.show()
+
+
+# print(results_df.groupby("code")["pixel_count"].describe())
