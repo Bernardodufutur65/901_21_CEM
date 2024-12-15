@@ -64,12 +64,15 @@ gdf_intersect_emprise_masque_FV = gdf_intersect_emprise_masque_FV.apply(update_f
 #print(gdf_intersect_emprise_masque_FV)
 
 # Sauvegarder le résultat dans un nouveau fichier shape "Sample_BD_foret_T31TCJ.shp"
-# chemin de sortie
-output_path = "/home/onyxia/work//data/sampleZ/Sample_BD_foret_T31TCJ.shp"
-# Création du répertoire parent
-output_dir = os.path.dirname(output_path)
-os.makedirs(output_dir, exist_ok=True)
+# chemin du dossier de sortie à créer
+folder_path = '/home/onyxia/work/results/data/sample'
+# Vérifier si le dossier existe, sinon le créer
+if not os.path.exists(folder_path):
+    os.makedirs(folder_path)
+    print(f"Dossier créé : {folder_path}")
+else:
+    print(f"Le dossier existe déjà : {folder_path}")
 # sauvegarde du gdf dans un shp
-gdf_intersect_emprise_masque_FV.to_file(output_path)
+output_filename = "/home/onyxia/work/results/data/sample/Sample_BD_foret_T31TCJ.shp"
 
-print(f"Mise à jour terminée et fichier sauvegardé à : {output_path}")
+print(f"Mise à jour terminée et fichier sauvegardé à : {output_filename}")
