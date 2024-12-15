@@ -80,5 +80,6 @@ else:
     print(f"Le dossier existe déjà : {folder_path}")
 # chemin de sortie du fichier shp des échantillons
 output_filename = "/home/onyxia/work/results/data/sample/Sample_BD_foret_T31TCJ.shp"
+gdf_intersect_emprise_masque_FV.to_file(output_filename)
 
 print(f"Mise à jour terminée et fichier sauvegardé à : {output_filename}")
