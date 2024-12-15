@@ -61,6 +61,12 @@ def update_fields(row):
 
 gdf_intersect_emprise_masque_FV = gdf_intersect_emprise_masque_FV.apply(update_fields, axis=1)
 
+# Suppression des lignes de "Nom" ou "Code" qui valent "None"
+gdf_intersect_emprise_masque_FV = gdf_intersect_emprise_masque_FV.dropna(subset=["Nom", "Code"])
+# Suppression des colonnes dont on ne se sert pas dans l'étude
+columns_to_drop = ["ID", "CODE_TFV", "TFV", "TFV_G11", "ESSENCE"]
+gdf_intersect_emprise_masque_FV = gdf_intersect_emprise_masque_FV.drop(columns=columns_to_drop)
+
 #print(gdf_intersect_emprise_masque_FV)
 
 # Sauvegarder le résultat dans un nouveau fichier shape "Sample_BD_foret_T31TCJ.shp"
@@ -72,7 +78,7 @@ if not os.path.exists(folder_path):
     print(f"Dossier créé : {folder_path}")
 else:
     print(f"Le dossier existe déjà : {folder_path}")
-# sauvegarde du gdf dans un shp
+# chemin de sortie du fichier shp des échantillons
 output_filename = "/home/onyxia/work/results/data/sample/Sample_BD_foret_T31TCJ.shp"
 
 print(f"Mise à jour terminée et fichier sauvegardé à : {output_filename}")
