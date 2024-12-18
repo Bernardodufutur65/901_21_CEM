@@ -224,7 +224,7 @@ print(f"Image empilée créée avec succès : {output_file}")
 
 
 
-
+'''
 
 import numpy as np
 import rasterio as rio
@@ -292,3 +292,4 @@ output_path = 'results/ndvi'
 
 # Calculate NDVI
 calculate_ndvi(releves, emprise, forest, output_path)
+'''
