@@ -26,40 +26,6 @@ def rasterization(in_vector, ref_image, out_image, field_name, dtype=None):
     result = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
     print(result.decode())
 
-### From Hugo C. I don't use the field name here its only binary 
-def hugo(in_vector, ref_image, out_image, field_name=None, dtype=None):
-    """
-    See otbcli_rasterisation for details on parameters
-    """
-    if field_name is None:
-        # Mode binaire si field_name est None
-        cmd_pattern = (
-            "otbcli_Rasterization -in {in_vector} -im {ref_image} -out {out_image} -mode binary"
-        )
-        cmd = cmd_pattern.format(in_vector=in_vector, ref_image=ref_image, out_image=out_image)
-    else:
-        # Mode attribut si field_name est spécifié
-        if dtype is not None:
-            field_name = field_name + ' ' + dtype
-        cmd_pattern = (
-            "otbcli_Rasterization -in {in_vector} -im {ref_image} -out {out_image}"
-            " -mode attribute -mode.attribute.field {field_name}"
-        )
-        cmd = cmd_pattern.format(in_vector=in_vector, ref_image=ref_image,
-                                 out_image=out_image, field_name=field_name)
-    print(cmd)
-    
-    # pour python >= 3.7
-    try:
-        result = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
-        print(result.decode())
-    except subprocess.CalledProcessError as e:
-        print("Erreur lors de l'exécution de la commande :")
-        print(e.output.decode())
-    except FileNotFoundError:
-        print("La commande 'otbcli_Rasterization' est introuvable. Assurez-vous qu'OTB est installé.")
-###
-
 def get_samples_from_roi(raster_name, roi_name, value_to_extract=None,
                          bands=None, output_fmt='full_matrix'):
     '''
@@ -163,3 +129,62 @@ def get_samples_from_roi(raster_name, roi_name, value_to_extract=None,
         return dict_X, Y, dict_t
     else:
         return X, Y, t,
+
+
+####
+import rasterio
+from rasterio.features import rasterize
+import fiona
+
+def hugo(in_vector, ref_image, out_image, dtype='uint8'):
+    """
+    Rasterise un fichier vecteur .shp en un fichier raster .tif.
+
+    Parameters
+    ----------
+    in_vector : str
+        Chemin vers le fichier vecteur d'entrée (.shp).
+    ref_image : str
+        Chemin vers l'image raster de référence pour les dimensions et la géoréférence.
+    out_image : str
+        Chemin vers le fichier raster de sortie (.tif).
+    dtype : str, optional
+        Type des données du raster de sortie (par exemple, 'uint8', 'int16').
+    """
+    # Ouvrir l'image raster de référence pour récupérer les métadonnées
+    with rasterio.open(ref_image) as src:
+        meta = src.meta.copy()
+        transform = src.transform
+        width = src.width
+        height = src.height
+        crs = src.crs
+    
+    # Configurer les métadonnées du raster de sortie
+    meta.update({
+        'driver': 'GTiff',
+        'dtype': dtype,
+        'count': 1,
+        'crs': crs,
+        'transform': transform,
+        'width': width,
+        'height': height
+    })
+
+    # Charger les entités géométriques du vecteur
+    with fiona.open(in_vector, 'r') as vector:
+        shapes = [(feature['geometry'], 1) for feature in vector]  # Valeur constante 1 pour toutes les géométries
+
+    # Rasteriser les géométries
+    rasterized_data = rasterize(
+        shapes=shapes,
+        out_shape=(height, width),
+        transform=transform,
+        dtype=dtype
+    )
+
+    # Sauvegarder le raster dans un fichier GeoTIFF
+    with rasterio.open(out_image, 'w', **meta) as dst:
+        dst.write(rasterized_data, 1)
+        print(f"Raster sauvegardé dans {out_image}")
+
+#######
