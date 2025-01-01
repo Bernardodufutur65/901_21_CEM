@@ -1,3 +1,9 @@
+'''
+A lire pour les trous de balle qui ne savent pas quoi faire de leur vacances. 
+Je bosse le 2 MOIIIIII, envoyez moi un discord si vous n'arrivez pas sur cette partie, vu que c'est moi qui ai commencé
+'''
+
+
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 import sys
@@ -8,6 +14,7 @@ import read_and_write as rw
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import accuracy_score
 import numpy as np
+import geopandas as gpd
 
 
 # 1 --- define parameters d'entrée
@@ -30,7 +37,13 @@ cla.hugo(sample_filename, image_filename, roi_image, dtype='int16')
 
 
 ### Nouvelle partie qui vien de Seance4.ipynb (cette partie de doit faire en sorte d'avoir les polygons avec leur attribut)
+### Il faudrais faire les même étapes que la Seance4.ipynb avant de faire la partie # 3 --- Train / Entraînement du modèle
 # 2 --- extract samples
+
+
+is_point = True
+# if is_point is True
+field_name = 'num'
 if not is_point :
     X, Y, t = cla.get_samples_from_roi(image_filename, sample_filename)
 else :
