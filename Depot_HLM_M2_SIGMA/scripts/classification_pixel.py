@@ -3,6 +3,12 @@ from sklearn.ensemble import RandomForestClassifier
 import sys
 sys.path.append('/home/onyxia/work/901_21_CEM/libsigma') # changement du path pour utiliser le fichier classification
 import classification as cla # provient d'un code que j'ai créée
+import read_and_write as rw
+
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import accuracy_score
+import numpy as np
+
 
 # 1 --- define parameters d'entrée
 # inputs / fichiers en entrée
@@ -15,12 +21,34 @@ test_size = 0.8
 # outputs / chemin de sortie
 output_file = ('/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/')
 
-# 2 --- Extract samples
+
 # vector to raster. 1 = ROI, 0 = out-side
 roi_image = ('/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/roi_raster.tif')
 cla.hugo(sample_filename, image_filename, roi_image, dtype='int16')
 
 
+
+
+### Nouvelle partie qui vien de Seance4.ipynb (cette partie de doit faire en sorte d'avoir les polygons avec leur attribut)
+# 2 --- extract samples
+if not is_point :
+    X, Y, t = cla.get_samples_from_roi(image_filename, sample_filename)
+else :
+    # get X
+    list_row, list_col = rw.get_row_col_from_file(sample_filename, image_filename)
+    image = rw.load_img_as_array(image_filename)
+    X = image[(list_row, list_col)]
+
+    # get Y
+    gdf = gpd.read_file(sample_filename)
+    Y = gdf.loc[:, field_name].values
+    Y = np.atleast_2d(Y).T
+
+list_cm = []
+list_accuracy = []
+list_report = []
+
+#### Ancienne partie qui fonctionne 
 try:
     # Extraction des données et labels
     X, Y, t = cla.get_samples_from_roi(image_filename, roi_image)
@@ -33,33 +61,12 @@ X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=test_size, r
 print(f"Données divisées : {len(X_train)} pour l'entraînement et {len(X_test)} pour le test.")
 
 
+
+
+
+
+
 # 3 --- Train / Entraînement du modèle
-try:
-    # Initialisation du modèle Random Forest
-    RF = RandomForestClassifier(
-        max_depth=50,
-        n_estimators=100,  # Nombre de pixel
-        oob_score=True,  # Out-of-Bag score
-        class_weight="balanced",  # Poids équilibrés pour les classes
-        max_samples=0.75,
-        random_state=1
-    )
-
-    # Entraîner le modèle
-    RF.fit(X_train, Y_train)
-    print("Modèle entraîné avec succès.")
-
-    # Évaluer la performance
-    oob_score = RF.oob_score_
-    print(f"Out-of-Bag Score : {oob_score:.2f}")
-except Exception as e:
-    print(f"Erreur lors de l'entraînement du modèle : {e}")
-    raise
-
-
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import StratifiedKFold, cross_val_score
-from sklearn.metrics import accuracy_score
 
 # Configuration de la validation croisée stratifiée
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=1)
@@ -67,19 +74,37 @@ skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=1)
 # Initialisation du modèle Random Forest
 RF = RandomForestClassifier(
     max_depth=50,
-    n_estimators=100,  # Nombre de pixel
-    oob_score=True,  # Out-of-Bag score
-    class_weight="balanced",  # Poids équilibrés pour les classes
+    n_estimators=100,
+    oob_score=True,
+    class_weight="balanced",
     max_samples=0.75,
-    random_state=1
+    random_state=1,
+    #n_jobs=-1  # Utilisation de tous les cœurs disponibles
 )
 
-# Validation croisée avec scoring
-scores = cross_val_score(RF, X_train, Y_train, cv=skf, scoring='accuracy')
+# Liste pour stocker les scores de chaque pli
+fold_scores = []
 
-# Résultats
-print("Scores pour chaque fold :", scores)
-print(f"Précision moyenne (cross-val) : {scores.mean():.2f}")
-print(f"Écart type des scores : {scores.std():.2f}")
+# Validation croisée incrémentale
+for fold, (train_idx, test_idx) in enumerate(skf.split(X_train, Y_train), 1):
+    # Division des données pour le pli courant
+    X_fold_train, X_fold_test = X_train[train_idx], X_train[test_idx]
+    Y_fold_train, Y_fold_test = Y_train[train_idx], Y_train[test_idx]
+    
+    # Entraîner le modèle sur les données d'entraînement du pli
+    RF.fit(X_fold_train, Y_fold_train)
+    
+    # Prédire sur les données de test du pli
+    Y_pred = RF.predict(X_fold_test)
+    
+    # Calculer la précision pour le pli courant
+    accuracy = accuracy_score(Y_fold_test, Y_pred)
+    fold_scores.append(accuracy)
+    
+    # Afficher le score du pli
+    print(f"Pli {fold}: Précision = {accuracy:.2f}")
 
-
+# Résultats globaux
+print("Scores pour chaque pli :", fold_scores)
+print(f"Précision moyenne : {sum(fold_scores) / len(fold_scores):.2f}")
+print(f"Écart type des scores : {np.std(fold_scores):.2f}")
