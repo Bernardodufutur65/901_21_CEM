@@ -39,8 +39,9 @@ cla.hugo(sample_filename, image_filename, roi_image, dtype='int16')
 ### Nouvelle partie qui vien de Seance4.ipynb (cette partie de doit faire en sorte d'avoir les polygons avec leur attribut)
 ### Il faudrais faire les même étapes que la Seance4.ipynb avant de faire la partie # 3 --- Train / Entraînement du modèle
 # 2 --- extract samples
-
-
+# 2.1 get_xy_from_file
+# 2.2 xy_to_rowcol
+# 2.3 get_row_col_from_file
 is_point = True
 # if is_point is True
 field_name = 'num'
