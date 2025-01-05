@@ -10,7 +10,7 @@ import numpy as np
 
 # Dossiers d'entrée et de sortie
 input_folder = "/home/onyxia/work/data/images/"
-output_folder = "/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/img_pretraitees"
+output_folder = "/home/onyxia/work/results/data/img_pretraitees"
 os.makedirs(output_folder, exist_ok=True)
 output_file = os.path.join(output_folder, "Serie_temp_S2_allbands.tif")
 
@@ -98,7 +98,7 @@ print(f"Image empilée créée avec succès : {output_file}")
 
 # Étape 1 : Initialisation des paramètres et des dossiers
 input_folder = "/home/onyxia/work/data/images/"
-output_folder = "/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/img_pretraitees"
+output_folder = "/home/onyxia/work/results/data/img_pretraitees"
 os.makedirs(output_folder, exist_ok=True)
 output_file_ndvi = os.path.join(output_folder, "Serie_temp_S2_ndvi.tif")
 mask_file = "/home/onyxia/work/results/data/img_pretraitees/masque_foret.tif"  # Masque de forêt
