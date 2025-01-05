@@ -17,7 +17,7 @@ output_file = os.path.join(output_folder, "Serie_temp_S2_allbands.tif")
 # Paramètres spécifiques
 resolution = 10  # Résolution spatiale cible (en mètres)
 projection_target = "EPSG:2154"  # Projection cible Lambert 93
-mask_file = "/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/img_pretraitees/masque_foret.tif"  # Masque de forêt
+mask_file = "/home/onyxia/work/results/data/img_pretraitees/masque_foret.tif"  # Masque de forêt
 shapefile_emprise = "/home/onyxia/work/data/project/emprise_etude.shp"  # Emprise
 nodata_value = 0  # Valeur de NoData
 
@@ -101,7 +101,7 @@ input_folder = "/home/onyxia/work/data/images/"
 output_folder = "/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/img_pretraitees"
 os.makedirs(output_folder, exist_ok=True)
 output_file_ndvi = os.path.join(output_folder, "Serie_temp_S2_ndvi.tif")
-mask_file = "/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/img_pretraitees/masque_foret.tif"  # Masque de forêt
+mask_file = "/home/onyxia/work/results/data/img_pretraitees/masque_foret.tif"  # Masque de forêt
 nodata_value = -9999  # Valeur de NoData
 
 # Étape 2 : Filtrer et grouper les bandes B4 et B8
