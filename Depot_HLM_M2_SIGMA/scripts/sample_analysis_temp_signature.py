@@ -69,6 +69,15 @@ class_names = {
     25: 'Pin Maritime'
 }
 
+dates = {
+    1: '26/03/2022',
+    2: '05/04/2022',
+    3: '14/07/2022',
+    4: '22/09/2022',
+    5: '11/11/2022',
+    6: '19/02/2023'
+}
+
 # Création de la figure et de l'axe
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 5))
 
@@ -88,9 +97,13 @@ for class_label, color in zip(classes, colors):
     # Zone d'incertitude (± écart-type)
     ax.fill_between(class_data['time'], means + stds, means - stds, facecolor=color, alpha=0.3)
 
+ax.xaxis.set_ticklabels([    
+    '000', '26/03/2022', '05/04/2022', '14/07/2022',
+    '22/09/2022', '11/11/2022', '19/02/2023'])
+
 # Configuration des axes et des légendes
 ax.set_title("Signature temporelle de la moyenne et l'écart type du NDVI par classe")
-ax.set_xlabel("Bandes")
+ax.set_xlabel("Dates")
 ax.set_ylabel("NDVI")
 ax.legend()
 
