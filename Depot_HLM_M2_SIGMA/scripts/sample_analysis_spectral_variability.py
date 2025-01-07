@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import geopandas as gpd
 import rasterio
 from shapely.geometry import Point
-import os
 
 # Sélection des classes rouges et bleues
 classes_rouges = ['11', '12', '13', '14', '23', '24', '25']  # Classes de peuplements purs
