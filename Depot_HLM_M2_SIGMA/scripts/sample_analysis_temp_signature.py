@@ -69,15 +69,6 @@ class_names = {
     25: 'Pin Maritime'
 }
 
-dates = {
-    1: '26/03/2022',
-    2: '05/04/2022',
-    3: '14/07/2022',
-    4: '22/09/2022',
-    5: '11/11/2022',
-    6: '19/02/2023'
-}
-
 # Création de la figure et de l'axe
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 5))
 
