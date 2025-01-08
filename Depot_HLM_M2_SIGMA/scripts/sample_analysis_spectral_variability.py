@@ -2,110 +2,108 @@ import numpy as np
 import matplotlib.pyplot as plt
 import geopandas as gpd
 import rasterio
+from rasterio.features import geometry_mask
 from shapely.geometry import Point
 
-# Sélection des classes rouges et bleues
-classes_rouges = ['11', '12', '13', '14', '23', '24', '25']  # Classes de peuplements purs
-classes_bleues = ['15', '26', '28', '29']  # Classes de peuplements en mélange
+# Classes de peuplement purs (rouges) et en mélange (bleues)
+classes_rouges = ['11', '12', '13', '14', '23', '24', '25']
+classes_bleues = ['15', '26', '28', '29']
 
+# Chemins des fichiers
+ndvi_file = "/home/onyxia/work/results/data/img_pretraitees/Serie_temp_S2_ndvi.tif"
+sample_file = "/home/onyxia/work/results/data/sample/Sample_BD_foret_T31TCJ.shp"
+
+# Charger le raster NDVI
+with rasterio.open(ndvi_file) as src:
+    ndvi_data = src.read(1)  # Lire la première bande
+    transform = src.transform  # Transformation géographique
+
+# Charger les polygones
+sample = gpd.read_file(sample_file)
+
+# Fonction permettant de calculer le centroïde d'une liste de coordonnées données
 def calculate_centroid(coords):
-    """
-    Calculer le centroïde d'une liste de coordonnées.
-    """
     coords = np.array(coords)
-    return coords.mean(axis=0)
+    cx = np.sum(coords[:, 0]) / len(coords)
+    cy = np.sum(coords[:, 1]) / len(coords)
+    return np.array([cx, cy])
 
+# Fonction permettant de calculer la distance moyenne au centroïde
 def calculate_average_distance(coords, centroid):
-    """
-    Calculer la distance moyenne des points à un centroïde.
-    """
-    distances = np.sqrt(((coords - centroid) ** 2).sum(axis=1))
-    return distances.mean()
+    distances = []
+    for coord in coords:
+        dx = coord[0] - centroid[0]
+        dy = coord[1] - centroid[1]
+        distance = np.sqrt(dx**2 + dy**2)
+        distances.append(distance)
+    return np.mean(distances)
 
-def is_point_in_polygon(x, y, polygon):
-    """
-    Vérifie si un point donné est à l'intérieur d'un polygone.
-    """
-    point = Point(x, y)
-    return polygon.contains(point)
+# Liste des distances par classe
+distances_par_classe = {}
 
-def process_image(image_path, polygons_path):
-    """
-    Traitement principal pour l'image et les polygones.
-    Cette fonction analyse les distances au centroïde pour les classes en bleu et rouge.
-    """
-    # Charger le raster (NDVI)
-    with rasterio.open(image_path) as src:
-        ndvi_data = src.read(1)  # Lire la première bande
-        transform = src.transform  # Transformation géographique
+########## --- Analyse à l'échelle de l'image entière --- ##########
+# Parcourir les classes uniques dans le raster NDVI
+unique_classes = np.unique(ndvi_data[~np.isnan(ndvi_data)])  # Identifier les classes uniques
 
-    # Charger les polygones (échantillons)
-    polygons = gpd.read_file(polygons_path)
+for cls in unique_classes:
+    cls = str(int(cls))  # Convertir en chaîne pour correspondre aux classes rouges/bleues
+    cls_indices = np.column_stack(np.where(ndvi_data == int(cls)))
 
-    # À l'échelle de l'image, identifier les classes uniques dans le NDVI
-    unique_classes = np.unique(ndvi_data[~np.isnan(ndvi_data)])  # Identifier les classes uniques
-    class_distances = {}
+    # Convertir les indices des pixels en coordonnées géographiques
+    cls_coords = [rasterio.transform.xy(transform, row, col) for row, col in cls_indices]
 
-    # Initialiser des listes pour les distances des classes rouges et bleues
-    distances_rouges = []
-    distances_bleues = []
+    # Calculer le centroïde et la distance moyenne au centroïde
+    centroid = calculate_centroid(cls_coords)
+    avg_distance = calculate_average_distance(cls_coords, centroid)
+    distances_par_classe[cls] = avg_distance
 
-    for cls in unique_classes:
-        # Trouver les indices des pixels correspondant à la classe
-        cls_indices = np.column_stack(np.where(ndvi_data == cls))
-        
-        # Convertir les indices en coordonnées géographiques
-        cls_coords = [
-            rasterio.transform.xy(transform, row, col)
-            for row, col in cls_indices
-        ]
+# Générer un diagramme en bâton
+plt.figure(figsize=(10, 6))
+plt.bar(distances_par_classe.keys(), distances_par_classe.values(), color='skyblue')
+plt.title("Distance moyenne au centroïde par classe")
+plt.xlabel("Classes")
+plt.ylabel("Distance moyenne")
+plt.savefig("/home/onyxia/work/results/figure/diag_baton_dist_centroide_classe.png")
+plt.close()
 
-        centroid = calculate_centroid(cls_coords)  # Calculer le centroïde
-        avg_distance = calculate_average_distance(cls_coords, centroid)  # Calculer la distance moyenne
+########## --- Analyse à l'échelle de chaque polygone --- ##########
+distances_polygones_rouges = []
+distances_polygones_bleues = []
 
-        class_distances[cls] = avg_distance
+for _, row in sample.iterrows():
+    polygon = row['geometry']
+    class_label = str(row['Code'])  # Vérifiez le nom exact de la colonne dans le shapefile
 
-        # Séparer les classes rouges et bleues
-        if str(cls) in classes_rouges:
-            distances_rouges.append(avg_distance)
-        elif str(cls) in classes_bleues:
-            distances_bleues.append(avg_distance)
+    # Extraire les pixels du raster à l'intérieur du polygone
+    mask = geometry_mask([polygon], transform=transform, invert=True, out_shape=ndvi_data.shape)
+    masked_ndvi = ndvi_data[mask]
 
-    # Comparaison des distances moyennes des classes rouges et bleues
-    print(f"Distance moyenne des classes rouges : {np.mean(distances_rouges)}")
-    print(f"Distance moyenne des classes bleues : {np.mean(distances_bleues)}")
-    
-    # Calcul de la variabilité (écart-type)
-    std_rouges = np.std(distances_rouges)
-    std_bleues = np.std(distances_bleues)
-    
-    print(f"Variabilité (écart-type) des classes rouges : {std_rouges}")
-    print(f"Variabilité (écart-type) des classes bleues : {std_bleues}")
+    if len(masked_ndvi) > 0:
+        # Coordonner les pixels à l'intérieur du polygone
+        poly_indices = np.column_stack(np.where(mask))
+        poly_coords = [rasterio.transform.xy(transform, row, col) for row, col in poly_indices]
 
-    # Visualisation avec Matplotlib - Boxplot
+        # Calculer le centroïde et la distance moyenne
+        centroid = calculate_centroid(poly_coords)
+        avg_distance = calculate_average_distance(poly_coords, centroid)
 
-    # Boxplot pour comparer les deux groupes de classes
-    plt.figure(figsize=(6, 4))
-    plt.boxplot([distances_rouges, distances_bleues], labels=["Rouges", "Bleues"], patch_artist=True)
-    plt.title("Comparaison de la variabilité des distances moyennes\nentre classes rouges et bleues")
-    plt.xlabel("Classe")
-    plt.ylabel("Distance moyenne au centroïde")
-    plt.savefig("results/figure/boxplot_variabilite_classes.png")
-    plt.close()
+        if class_label in classes_rouges:
+            distances_polygones_rouges.append(avg_distance)
+        elif class_label in classes_bleues:
+            distances_polygones_bleues.append(avg_distance)
 
-    # Autre graphique : Distribution des distances
-    plt.figure(figsize=(6, 4))
-    plt.hist(distances_rouges, bins=15, alpha=0.7, label="Classes rouges", color='red')
-    plt.hist(distances_bleues, bins=15, alpha=0.7, label="Classes bleues", color='blue')
-    plt.legend()
-    plt.title("Distribution des distances moyennes au centroïde")
-    plt.xlabel("Distance moyenne au centroïde")
-    plt.ylabel("Fréquence")
-    plt.savefig("results/figure/distribution_distances_classes.png")
-    plt.close()
+# Générer un "violin plot" pour les distances par classe
+data = [distances_polygones_rouges, distances_polygones_bleues]
 
-# Exemple d'utilisation
-process_image(
-    "/home/onyxia/work/results/data/img_pretraitees/Serie_temp_S2_ndvi.tif", 
-    "/home/onyxia/work/results/data/sample/Sample_BD_foret_T31TCJ.shp"
-)
+fig, ax = plt.subplots(figsize=(8, 6))
+ax.violinplot(data, showmeans=True, showmedians=True)
+
+# Ajout des étiquettes
+ax.set_xticks([1, 2])
+ax.set_xticklabels(["Rouges", "Bleues"])
+ax.set_title("Distribution des distances moyennes par polygone et par classe")
+ax.set_ylabel("Distance moyenne au centroïde")
+
+# Sauvegarde et affichage
+plt.savefig("results/figure/violin_plot_dist_centroide_by_poly_by_class.png")
+plt.close()
