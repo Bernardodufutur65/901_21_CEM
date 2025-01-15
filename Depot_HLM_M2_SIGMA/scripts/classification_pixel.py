@@ -17,13 +17,19 @@ import numpy as np
 import geopandas as gpd
 
 
+
+import geopandas as gpd
+import rasterio
+from rasterio.features import geometry_mask
+from shapely.geometry import Point
+import numpy as np
+
 # 1 --- define parameters d'entrée
 # inputs / fichiers en entrée
 sample_filename = ('/home/onyxia/work/data/project/emprise_etude.shp')
 image_filename = ('/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/img_pretraitees/Serie_temp_S2_ndvi.tif')
+vector_filename = ('/home/onyxia/work/results/data/sample/Sample_BD_foret_T31TCJ.shp')
 
-# Sample parameters / paramètres échantillonnage
-test_size = 0.8
 
 # outputs / chemin de sortie
 output_file = ('/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/')
@@ -33,34 +39,85 @@ output_file = ('/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/')
 roi_image = ('/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/roi_raster.tif')
 cla.hugo(sample_filename, image_filename, roi_image, dtype='int16')
 
+# ouvrir vector_filename et enlever les polygon qui sont en dehors du roi_image valeur =1
+# Charger le shapefile (vecteur) et l'image raster (ROI)
+vector_data = gpd.read_file(vector_filename)
+roi_raster = rasterio.open(roi_image)
+
+# Créer une fonction pour filtrer les polygones en fonction de ROI
+def filter_polygons_by_roi(vector_data, roi_raster):
+    roi_array = roi_raster.read(1)  # Lire la première bande
+    transform = roi_raster.transform
+    
+    # Filtrer les polygones qui intersectent les zones ROI=1
+    def is_in_roi(geom):
+        geom_bounds = geom.bounds
+        rows, cols = rasterio.transform.rowcol(
+            transform, [geom_bounds[0], geom_bounds[2]], [geom_bounds[1], geom_bounds[3]]
+        )
+        mask = geometry_mask([geom], transform=transform, invert=True, out_shape=roi_array.shape)
+        return np.any(roi_array[mask] == 1)
+    
+    filtered_data = vector_data[vector_data.geometry.apply(is_in_roi)]
+    return filtered_data
+
+# Filtrer les polygones
+filtered_vector_data = filter_polygons_by_roi(vector_data, roi_raster)
+
+# créer une nouvelle couche de centroide par rapport aux pixel qui sont inclu dans ma géométrie.
+
+
+# Créer une couche contenant les centroïdes de tous les pixels dans chaque polygone
+def create_pixel_centroid_layer_optimized(filtered_data, roi_raster):
+    roi_array = roi_raster.read(1)
+    transform = roi_raster.transform
+    centroids = []
+
+    # Pré-calculer la matrice de transformation inverse
+    transform_inv = ~transform
+
+    for idx, row in filtered_data.iterrows():
+        # Créer un masque binaire pour le polygone
+        mask = geometry_mask(
+            [row.geometry],
+            transform=transform,
+            invert=True,
+            out_shape=roi_array.shape
+        )
+        
+        # Identifier les pixels dans le polygone avec ROI=1
+        rows, cols = np.where(mask & (roi_array == 1))
+        
+        # Calculer les coordonnées centrales des pixels en batch
+        coords = rasterio.transform.xy(transform, rows, cols, offset='center')
+        x_coords, y_coords = coords
+
+        # Ajouter les centroïdes sous forme de batch
+        centroids.extend([
+            {
+                'geometry': Point(x, y),
+                'Code': row['Code'],  # Champ existant dans le fichier vecteur
+                'Pixel_Value': roi_array[r, c]
+            }
+            for x, y, r, c in zip(x_coords, y_coords, rows, cols)
+        ])
+    
+    # Créer une GeoDataFrame à partir des centroïdes
+    centroid_gdf = gpd.GeoDataFrame(centroids, crs=filtered_data.crs)
+    return centroid_gdf
+
+# Générer la couche de centroïdes
+centroid_layer = create_pixel_centroid_layer_optimized(vector_data, roi_raster)
+
+# ajouter la valeur du pixel et ne numéro du polygon champs "Code"
+# enregistrer cette couche dans un fichier avec cette sortie "/home/onyxia/work/results/data/centro.shp"
+output_centroid_file = '/home/onyxia/work/results/data/centro.shp'
+centroid_layer.to_file(output_centroid_file)
 
 
 
-### Nouvelle partie qui vien de Seance4.ipynb (cette partie de doit faire en sorte d'avoir les polygons avec leur attribut)
-### Il faudrais faire les même étapes que la Seance4.ipynb avant de faire la partie # 3 --- Train / Entraînement du modèle
-# 2 --- extract samples
-# 2.1 get_xy_from_file
-# 2.2 xy_to_rowcol
-# 2.3 get_row_col_from_file
-is_point = True
-# if is_point is True
-field_name = 'num'
-if not is_point :
-    X, Y, t = cla.get_samples_from_roi(image_filename, sample_filename)
-else :
-    # get X
-    list_row, list_col = rw.get_row_col_from_file(sample_filename, image_filename)
-    image = rw.load_img_as_array(image_filename)
-    X = image[(list_row, list_col)]
-
-    # get Y
-    gdf = gpd.read_file(sample_filename)
-    Y = gdf.loc[:, field_name].values
-    Y = np.atleast_2d(Y).T
-
-list_cm = []
-list_accuracy = []
-list_report = []
+# Sample parameters / paramètres échantillonnage
+test_size = 0.2
 
 #### Ancienne partie qui fonctionne 
 try:
