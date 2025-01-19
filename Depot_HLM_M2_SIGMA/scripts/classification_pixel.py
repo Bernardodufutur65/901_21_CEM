@@ -33,7 +33,7 @@ vector_filename = ('/home/onyxia/work/results/data/sample/Sample_BD_foret_T31TCJ
 
 # outputs / chemin de sortie
 output_file = ('/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/')
-
+output_centroid_file = ('/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/centro.shp')
 
 # vector to raster. 1 = ROI, 0 = out-side
 roi_image = ('/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/roi_raster.tif')
@@ -43,76 +43,95 @@ cla.hugo(sample_filename, image_filename, roi_image, dtype='int16')
 # Charger le shapefile (vecteur) et l'image raster (ROI)
 vector_data = gpd.read_file(vector_filename)
 roi_raster = rasterio.open(roi_image)
+ndvi_raster = rasterio.open(image_filename)
 
-# Créer une fonction pour filtrer les polygones en fonction de ROI
-def filter_polygons_by_roi(vector_data, roi_raster):
-    roi_array = roi_raster.read(1)  # Lire la première bande
-    transform = roi_raster.transform
-    
-    # Filtrer les polygones qui intersectent les zones ROI=1
-    def is_in_roi(geom):
-        geom_bounds = geom.bounds
-        rows, cols = rasterio.transform.rowcol(
-            transform, [geom_bounds[0], geom_bounds[2]], [geom_bounds[1], geom_bounds[3]]
-        )
-        mask = geometry_mask([geom], transform=transform, invert=True, out_shape=roi_array.shape)
-        return np.any(roi_array[mask] == 1)
-    
-    filtered_data = vector_data[vector_data.geometry.apply(is_in_roi)]
-    return filtered_data
+# créer un vecteur centroid qui représente le centroid de tous les pixel de mon image ndvi (utilise les info du raster taille pixel / total...)
+# Découper les centroid par rapport au vextor_data. 
+# Les centroide doivent avoir un nouveau champs 'NDVI' qui correspond a la valeur du pixel du ndvi_raster
+# les centroides qui intersect un polygon doivent récupérer le 'Code' dans un nouveau champs
 
-# Filtrer les polygones
-filtered_vector_data = filter_polygons_by_roi(vector_data, roi_raster)
-
-# créer une nouvelle couche de centroide par rapport aux pixel qui sont inclu dans ma géométrie.
+import geopandas as gpd
+import rasterio
+from rasterio.features import dataset_features
+from shapely.geometry import Point
+import numpy as np
+from rasterio.transform import from_origin
 
 
-# Créer une couche contenant les centroïdes de tous les pixels dans chaque polygone
-def create_pixel_centroid_layer_optimized(filtered_data, roi_raster):
-    roi_array = roi_raster.read(1)
-    transform = roi_raster.transform
-    centroids = []
+# === Obtenir les centroïdes du raster en vectorisant ===
+def generate_centroids(raster):
+    transform = raster.transform
+    rows, cols = raster.height, raster.width
 
-    # Pré-calculer la matrice de transformation inverse
-    transform_inv = ~transform
+    # Calculer les coordonnées pour tous les pixels en une étape vectorisée
+    x_coords = np.linspace(
+        transform[2] + transform[0] / 2,
+        transform[2] + transform[0] * (cols - 0.5),
+        cols
+    )
+    y_coords = np.linspace(
+        transform[5] + transform[4] / 2,
+        transform[5] + transform[4] * (rows - 0.5),
+        rows
+    )
 
-    for idx, row in filtered_data.iterrows():
-        # Créer un masque binaire pour le polygone
-        mask = geometry_mask(
-            [row.geometry],
-            transform=transform,
-            invert=True,
-            out_shape=roi_array.shape
-        )
-        
-        # Identifier les pixels dans le polygone avec ROI=1
-        rows, cols = np.where(mask & (roi_array == 1))
-        
-        # Calculer les coordonnées centrales des pixels en batch
-        coords = rasterio.transform.xy(transform, rows, cols, offset='center')
-        x_coords, y_coords = coords
+    # Créer une grille complète des points
+    xx, yy = np.meshgrid(x_coords, y_coords)
+    points = np.column_stack((xx.ravel(), yy.ravel()))
 
-        # Ajouter les centroïdes sous forme de batch
-        centroids.extend([
-            {
-                'geometry': Point(x, y),
-                'Code': row['Code'],  # Champ existant dans le fichier vecteur
-                'Pixel_Value': roi_array[r, c]
-            }
-            for x, y, r, c in zip(x_coords, y_coords, rows, cols)
-        ])
-    
-    # Créer une GeoDataFrame à partir des centroïdes
-    centroid_gdf = gpd.GeoDataFrame(centroids, crs=filtered_data.crs)
+    return points
+
+centroid_points = generate_centroids(ndvi_raster)
+
+
+
+# === Filtrer par le ROI (optionnel pour accélérer) ===
+def filter_by_roi(points, roi_bounds):
+    xmin, ymin, xmax, ymax = roi_bounds
+    return points[
+        (points[:, 0] >= xmin) & (points[:, 0] <= xmax) &
+        (points[:, 1] >= ymin) & (points[:, 1] <= ymax)
+    ]
+
+roi_bounds = roi_raster.bounds
+centroid_points_filtered = filter_by_roi(centroid_points, roi_bounds)
+
+# === Créer une GeoDataFrame pour les centroïdes filtrés ===
+centroid_gdf = gpd.GeoDataFrame(
+    geometry=gpd.points_from_xy(centroid_points_filtered[:, 0], centroid_points_filtered[:, 1]),
+    crs=ndvi_raster.crs
+)
+
+# === Découper la couche centroid_gdf par rapport à vector_data ===
+centroid_gdf = gpd.overlay(centroid_gdf, vector_data, how="intersection")
+
+# === Ajouter le champ "NDVI" avec les valeurs du raster ===
+def assign_ndvi(centroid_gdf, raster):
+    values = []
+    with rasterio.open(raster) as src:
+        for point in centroid_gdf.geometry:
+            row, col = src.index(point.x, point.y)  # Obtenir les indices matriciels
+            ndvi_value = src.read(1)[row, col]  # Lire la valeur NDVI
+            values.append(ndvi_value)
+    centroid_gdf["NDVI"] = values
     return centroid_gdf
 
-# Générer la couche de centroïdes
-centroid_layer = create_pixel_centroid_layer_optimized(vector_data, roi_raster)
+centroid_gdf = assign_ndvi(centroid_gdf, image_filename)
 
-# ajouter la valeur du pixel et ne numéro du polygon champs "Code"
-# enregistrer cette couche dans un fichier avec cette sortie "/home/onyxia/work/results/data/centro.shp"
-output_centroid_file = '/home/onyxia/work/results/data/centro.shp'
-centroid_layer.to_file(output_centroid_file)
+# === Associer le champ "Code" des polygones intersectés avec jointure spatiale ===
+def assign_code(centroid_gdf, vector_gdf):
+    vector_gdf = vector_gdf.to_crs(centroid_gdf.crs)
+    centroid_gdf = gpd.sjoin(centroid_gdf, vector_gdf, how="left", predicate="intersects")
+    if "Code" not in centroid_gdf.columns:
+        centroid_gdf["Code"] = None
+    return centroid_gdf
+
+centroid_gdf = assign_code(centroid_gdf, vector_data)
+
+# === Sauvegarder le fichier de sortie ===
+centroid_gdf.to_file(output_centroid_file, driver='ESRI Shapefile')
+
+print(f"Les centroïdes ont été enregistrés dans {output_centroid_file}.")
 
 
 
