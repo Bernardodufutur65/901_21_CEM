@@ -10,14 +10,11 @@ import sys
 sys.path.append('/home/onyxia/work/901_21_CEM/libsigma') # changement du path pour utiliser le fichier classification
 import classification as cla # provient d'un code que j'ai créée
 import read_and_write as rw
-
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import accuracy_score
-import numpy as np
-import geopandas as gpd
 
-
-
+from rasterio.features import dataset_features
+from rasterio.transform import from_origin
 import geopandas as gpd
 import rasterio
 from rasterio.features import geometry_mask
@@ -50,12 +47,6 @@ ndvi_raster = rasterio.open(image_filename)
 # Les centroide doivent avoir un nouveau champs 'NDVI' qui correspond a la valeur du pixel du ndvi_raster
 # les centroides qui intersect un polygon doivent récupérer le 'Code' dans un nouveau champs
 
-import geopandas as gpd
-import rasterio
-from rasterio.features import dataset_features
-from shapely.geometry import Point
-import numpy as np
-from rasterio.transform import from_origin
 
 
 # === Obtenir les centroïdes du raster en vectorisant ===
@@ -107,12 +98,18 @@ centroid_gdf = gpd.overlay(centroid_gdf, vector_data, how="intersection")
 
 # === Ajouter le champ "NDVI" avec les valeurs du raster ===
 def assign_ndvi(centroid_gdf, raster):
-    values = []
+    # Vectorisation pour améliorer les performances
     with rasterio.open(raster) as src:
-        for point in centroid_gdf.geometry:
-            row, col = src.index(point.x, point.y)  # Obtenir les indices matriciels
-            ndvi_value = src.read(1)[row, col]  # Lire la valeur NDVI
-            values.append(ndvi_value)
+        affine = src.transform
+        array = src.read(1)  # Lire la première bande
+
+        # Obtenir les indices matriciels pour tous les points
+        rows_cols = [src.index(point.x, point.y) for point in centroid_gdf.geometry]
+
+        # Extraire les valeurs NDVI via une compréhension de liste
+        values = [array[row, col] if 0 <= row < array.shape[0] and 0 <= col < array.shape[1] else np.nan
+                  for row, col in rows_cols]
+
     centroid_gdf["NDVI"] = values
     return centroid_gdf
 
@@ -135,66 +132,42 @@ print(f"Les centroïdes ont été enregistrés dans {output_centroid_file}.")
 
 
 
-# Sample parameters / paramètres échantillonnage
-test_size = 0.2
 
-#### Ancienne partie qui fonctionne 
-try:
-    # Extraction des données et labels
-    X, Y, t = cla.get_samples_from_roi(image_filename, roi_image)
-    print(f"Samples extraits avec succès : {len(X)} échantillons.")
-except Exception as e:
-    print(f"Erreur lors de l'extraction des échantillons : {e}")
-    raise
+# === Préparation des données pour le Machine Learning ===
+X = centroid_gdf[["NDVI"]].values  # Features : NDVI
+Y = centroid_gdf["Code"].values    # Target : Code
+
 # Séparation en données d'entraînement et de test
+test_size = 0.2
 X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=test_size, random_state=1)
 print(f"Données divisées : {len(X_train)} pour l'entraînement et {len(X_test)} pour le test.")
 
-
-
-
-
-
-
-# 3 --- Train / Entraînement du modèle
-
-# Configuration de la validation croisée stratifiée
+# === Entraînement du modèle Random Forest ===
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=1)
-
-# Initialisation du modèle Random Forest
 RF = RandomForestClassifier(
     max_depth=50,
     n_estimators=100,
     oob_score=True,
     class_weight="balanced",
     max_samples=0.75,
-    random_state=1,
-    #n_jobs=-1  # Utilisation de tous les cœurs disponibles
+    random_state=1
 )
 
-# Liste pour stocker les scores de chaque pli
 fold_scores = []
-
-# Validation croisée incrémentale
 for fold, (train_idx, test_idx) in enumerate(skf.split(X_train, Y_train), 1):
-    # Division des données pour le pli courant
     X_fold_train, X_fold_test = X_train[train_idx], X_train[test_idx]
     Y_fold_train, Y_fold_test = Y_train[train_idx], Y_train[test_idx]
-    
-    # Entraîner le modèle sur les données d'entraînement du pli
+
     RF.fit(X_fold_train, Y_fold_train)
-    
-    # Prédire sur les données de test du pli
     Y_pred = RF.predict(X_fold_test)
-    
-    # Calculer la précision pour le pli courant
+
     accuracy = accuracy_score(Y_fold_test, Y_pred)
     fold_scores.append(accuracy)
-    
-    # Afficher le score du pli
     print(f"Pli {fold}: Précision = {accuracy:.2f}")
 
-# Résultats globaux
 print("Scores pour chaque pli :", fold_scores)
-print(f"Précision moyenne : {sum(fold_scores) / len(fold_scores):.2f}")
+print(f"Précision moyenne : {np.mean(fold_scores):.2f}")
 print(f"Écart type des scores : {np.std(fold_scores):.2f}")
+
+
+
