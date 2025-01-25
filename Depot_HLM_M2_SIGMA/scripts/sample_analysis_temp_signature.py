@@ -74,7 +74,7 @@ fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 5))
 
 # Définition des couleurs pour chaque classe
 colors = ['tan', 'palegreen', 'limegreen', 'darkgreen', 'cornflowerblue', 'gold']
-classes = df_grouped['class'].unique()  # Liste des classes uniques
+classes = df_grouped['class'].unique()  # Liste des classes
 
 # Parcours des classes et affichage
 for class_label, color in zip(classes, colors):
@@ -85,7 +85,7 @@ for class_label, color in zip(classes, colors):
     # Tracé de la courbe moyenne
     ax.plot(class_data['time'], means, color=color, label=class_names.get(int(class_label), f'Classe {class_label}'))
     
-    # Zone d'incertitude (± écart-type)
+    # Zone d'incertitude (écart-type)
     ax.fill_between(class_data['time'], means + stds, means - stds, facecolor=color, alpha=0.3)
 
 ax.xaxis.set_ticklabels([    

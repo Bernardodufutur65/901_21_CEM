@@ -60,9 +60,13 @@ plt.figure(figsize=(8, 6))
 plt.bar(resultats_df['Classe'], resultats_df['Distance moyenne'], color=['red', 'blue'])
 plt.xlabel('Classe')
 plt.ylabel('Distance moyenne au centroïde')
-plt.title('Distances moyennes au centroïde par classe')
+plt.title('Distance moyenne au centroïde des NDVI par classe')
 plt.savefig(output_file_diag)
 plt.close()
+
+# Affichage du graphique
+plt.tight_layout()
+plt.show()
 
 ########## --- À l'échelle de chaque polygone --- ##########
 # Fonction pour extraire les valeurs NDVI d'un raster pour un polygone donné
@@ -121,8 +125,12 @@ for pos, d, label in zip(positions, data, labels):
 plt.xticks(positions, labels)
 plt.xlabel('Classe')
 plt.ylabel('Distance moyenne au centroïde')
-plt.title('Distribution des distances moyennes au centroïde par classe')
+plt.title('Distances moyennes au centroïde des NDVI pour les polygones d’une classe')
 
 # Sauvegarder la figure
 plt.savefig(output_file_violin)
 plt.close()
+
+# Affichage du graphique
+plt.tight_layout()
+plt.show()
