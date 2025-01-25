@@ -24,16 +24,16 @@ import numpy as np
 # 1 --- define parameters d'entrée
 # inputs / fichiers en entrée
 sample_filename = ('/home/onyxia/work/data/project/emprise_etude.shp')
-image_filename = ('/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/img_pretraitees/Serie_temp_S2_ndvi.tif')
+image_filename = ('/home/onyxia/work/results/data/img_pretraitees/Serie_temp_S2_ndvi.tif')
 vector_filename = ('/home/onyxia/work/results/data/sample/Sample_BD_foret_T31TCJ.shp')
 
 
 # outputs / chemin de sortie
-output_file = ('/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/')
-output_centroid_file = ('/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/centro.shp')
+output_file = ('/home/onyxia/work/results/data')
+output_centroid_file = ('/home/onyxia/work/results/datacentro.shp')
 
 # vector to raster. 1 = ROI, 0 = out-side
-roi_image = ('/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/results/data/roi_raster.tif')
+roi_image = ('/home/onyxia/work/results/dataroi_raster.tif')
 cla.hugo(sample_filename, image_filename, roi_image, dtype='int16')
 
 # ouvrir vector_filename et enlever les polygon qui sont en dehors du roi_image valeur =1
