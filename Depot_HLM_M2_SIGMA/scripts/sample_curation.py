@@ -1,4 +1,4 @@
-# Import des librairies
+# Import des bibliothques
 import geopandas as gpd
 import os
 
