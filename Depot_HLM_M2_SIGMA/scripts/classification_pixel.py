@@ -1,14 +1,9 @@
-'''
-A lire pour les trous de balle qui ne savent pas quoi faire de leur vacances. 
-Je bosse le 2 MOIIIIII, envoyez moi un discord si vous n'arrivez pas sur cette partie, vu que c'est moi qui ai commencé
-'''
-
 
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 import sys
-sys.path.append('/home/onyxia/work/901_21_CEM/libsigma') # changement du path pour utiliser le fichier classification
-import classification as cla # provient d'un code que j'ai créée
+sys.path.append('/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/scripts/') # changement du path pour utiliser le fichier classification
+import my_function as MF # provient d'un code que j'ai créée
 import read_and_write as rw
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import accuracy_score
@@ -30,11 +25,11 @@ vector_filename = ('/home/onyxia/work/results/data/sample/Sample_BD_foret_T31TCJ
 
 # outputs / chemin de sortie
 output_file = ('/home/onyxia/work/results/data')
-output_centroid_file = ('/home/onyxia/work/results/datacentro.shp')
+output_centroid_file = ('/home/onyxia/work/results/data/centro.shp')
 
 # vector to raster. 1 = ROI, 0 = out-side
-roi_image = ('/home/onyxia/work/results/dataroi_raster.tif')
-cla.hugo(sample_filename, image_filename, roi_image, dtype='int16')
+roi_image = ('/home/onyxia/work/results/data/roi_raster.tif')
+MF.hugo(sample_filename, image_filename, roi_image, dtype='int16')
 
 # ouvrir vector_filename et enlever les polygon qui sont en dehors du roi_image valeur =1
 # Charger le shapefile (vecteur) et l'image raster (ROI)
@@ -131,11 +126,11 @@ centroid_gdf.to_file(output_centroid_file, driver='ESRI Shapefile')
 print(f"Les centroïdes ont été enregistrés dans {output_centroid_file}.")
 
 
-
+centroid_gdf.head()
 
 # === Préparation des données pour le Machine Learning ===
 X = centroid_gdf[["NDVI"]].values  # Features : NDVI
-Y = centroid_gdf["Code"].values    # Target : Code
+Y = centroid_gdf["Code_right"].values    # Target : Code
 
 # Séparation en données d'entraînement et de test
 test_size = 0.2
