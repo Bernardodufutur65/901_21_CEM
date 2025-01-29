@@ -57,7 +57,7 @@ resultats_df = pd.DataFrame(resultats)
 
 # Générer le diagramme en bâton
 plt.figure(figsize=(8, 6))
-plt.bar(resultats_df['Classe'], resultats_df['Distance moyenne'], color=['red', 'blue'])
+plt.bar(['Peuplements purs', 'Peuplements en mélange'], resultats_df['Distance moyenne'], color=['red', 'blue'])
 plt.xlabel('Classe')
 plt.ylabel('Distance moyenne au centroïde')
 plt.title('Distance moyenne au centroïde des NDVI par classe')
@@ -105,7 +105,7 @@ plt.figure(figsize=(10, 6))
 
 # Générer les distributions pour chaque classe
 positions = [1, 2]
-labels = ['Rouge', 'Bleue']
+labels = ['Peuplements purs', 'Peuplements en mélange']
 data = [distances_par_classe['Rouge'], distances_par_classe['Bleue']]
 
 # Fonction pour tracer un violin plot avec matplotlib
@@ -114,7 +114,7 @@ for pos, d, label in zip(positions, data, labels):
     
     # Personnalisation des couleurs
     for pc in parts['bodies']:
-        pc.set_facecolor('red' if label == 'Rouge' else 'blue')
+        pc.set_facecolor('red' if label == 'Peuplements purs' else 'blue')
         pc.set_edgecolor('black')
         pc.set_alpha(0.6)
     parts['cmeans'].set_color('green')

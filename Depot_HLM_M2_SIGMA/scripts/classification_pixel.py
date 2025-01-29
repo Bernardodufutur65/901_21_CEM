@@ -2,7 +2,7 @@
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 import sys
-sys.path.append('/home/onyxia/work/901_21_CEM/Depot_HLM_M2_SIGMA/scripts/') # changement du path pour utiliser le fichier classification
+sys.path.append('/home/onyxia/work/libsigma') # changement du path pour utiliser le fichier classification
 import my_function as MF # provient d'un code que j'ai créée
 import read_and_write as rw
 from sklearn.model_selection import StratifiedKFold
